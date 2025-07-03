@@ -1,7 +1,8 @@
 //不明な点があったら芦澤まで
 
-const float Target_Black = -18.0; //目標温度
-const float Target_Red = -18.0; //目標温度
+
+float Target_Black = -18.0; //目標温度
+float Target_Red = -18.0; //目標温度
 const int Senser_Port_Black = 0;
 const int Senser_Port_Red = 1;
 const int Output_Port_Black = 9; //PWM Port
@@ -9,15 +10,15 @@ const int Output_Port_Red = 10;
 bool echo_on = false;
 
 //PID制御パラメータ
-const float Kp_Black = 300.0; //比例ゲイン
-const float Ki_Black = 11.0; //積分ゲイン
-const float Kd_Black = 100.0; //微分ゲイン
+float Kp_Black = 300.0; //比例ゲイン
+float Ki_Black = 11.0; //積分ゲイン
+float Kd_Black = 100.0; //微分ゲイン
 //Black channel
 //-30℃で1200/50/0
 //-18℃で1500/75/10
-const float Kp_Red = 400.0; //比例ゲイン
-const float Ki_Red = 15.0; //積分ゲイン
-const float Kd_Red = 33.0; //微分ゲイン
+float Kp_Red = 400.0; //比例ゲイン
+float Ki_Red = 15.0; //積分ゲイン
+float Kd_Red = 33.0; //微分ゲイン
 //Red channel
 
 float P_Black = 0;
@@ -129,6 +130,17 @@ void serialEvent(){
   if(Serial.available()>0) {
     ch=Serial.read();
     switch(ch){
+      case 'h':
+        //myString = Serial.readString();
+        Serial.println("c: Rreturn \"PID_Controller\"");
+        Serial.println("e: Enable report");
+        Serial.println("s: Stop report");
+        Serial.println("r: Reset and return \"Reset\"");
+        Serial.println("l: Show current PID parameters");
+        Serial.println("p: Put PID parameters; given by 7 numbers separated \",\" and return \"P\"");
+        Serial.println("h: Show this message");
+        Serial.flush();
+        break;
       case 'c':
         myString = Serial.readString();
         Serial.println("PID_Controller");
@@ -141,7 +153,7 @@ void serialEvent(){
         break;
       case 's':
         myString = Serial.readString();
-        echo_on =false;
+        echo_on = false;
         Serial.flush();
         break;
       case 'r':
@@ -149,18 +161,60 @@ void serialEvent(){
         Serial.println("Reset"); // Arduinoリセット "Reset"を返す
         Serial.flush();
         resetFunc();
-      break;
-      case 'h':
+        break;
+      case 'l':
+        echo_on = false;
+        Serial.print(Target_Black);// Black: 目的温度を返す
+        Serial.print(",");
+        Serial.print(Kp_Black); // Black: 制御パラメーターを返す
+        Serial.print(",");
+        Serial.print(Ki_Black);
+        Serial.print(",");
+        Serial.print(Kd_Black);
+        Serial.print(",");
+        Serial.print(Target_Red);// Red: 目的温度を返す
+        Serial.print(",");
+        Serial.print(Kp_Red); // Red: 制御パラメーターを返す
+        Serial.print(",");
+        Serial.print(Ki_Red);
+        Serial.print(",");
+        Serial.println(Kd_Red);
+        Serial.flush();
+        break;
+      case 'p':
         myString = Serial.readString();
-          Serial.println("c: Rreturn \"PID_Controller\"");
-          Serial.println("e: Enable report");
-          Serial.println("s: Stop report");
-          Serial.println("h: Show this message");
-          Serial.flush();
+        //Serial.println(myString);
+        String cmds[8] = {"\0"}; // 分割された文字列を格納する配列 
+        int index = split(myString, ',', cmds);
+        Target_Black = cmds[0].toInt();// Black: 目的温度を返す
+        Kp_Black = cmds[1].toInt(); // Black: 制御パラメーターを返す
+        Ki_Black = cmds[2].toInt();
+        Kd_Black = cmds[3].toInt();
+        Target_Red = cmds[4].toInt();// Red: 目的温度を返す
+        Kp_Red = cmds[5].toInt(); // Red: 制御パラメーターを返す
+        Ki_Red = cmds[6].toInt();
+        Kd_Red = cmds[7].toInt();
+        Serial.println("P");
+        Serial.flush();
         break;
       default:
         myString = Serial.readString();
         //Serial.println("Interapted!");
     }
   }
+}
+
+int split(String data, char delimiter, String *dst){ // 文字列を区切り文字で分割
+    int index = 0; 
+    int datalength = data.length();
+    
+    for (int i = 0; i < datalength; i++) {
+        char tmp = data.charAt(i);
+        if ( tmp == delimiter ) {
+            index++;
+        }
+        else dst[index] += tmp;
+    }
+    
+    return (index + 1);
 }
