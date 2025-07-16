@@ -135,8 +135,9 @@ void serialEvent(){
         Serial.println("c: Rreturn \"PID_Controller\"");
         Serial.println("e: Enable report");
         Serial.println("s: Stop report");
+        Serial.println("r: Reset and return \"Reset\"");
         Serial.println("l: Show current PID parameters");
-        Serial.println("p: Put PID parameters; given by 7 numbers separated \",\"");
+        Serial.println("p: Put PID parameters; given by 7 numbers separated \",\" and return \"P\"");
         Serial.println("h: Show this message");
         Serial.flush();
         break;
@@ -163,13 +164,20 @@ void serialEvent(){
         break;
       case 'l':
         echo_on = false;
-        Serial.println(Target_Black);// Black: 目的温度を返す
-        Serial.println(Kp_Black); // Black: 制御パラメーターを返す
-        Serial.println(Ki_Black);
-        Serial.println(Kd_Black);
-        Serial.println(Target_Red);// Red: 目的温度を返す
-        Serial.println(Kp_Red); // Red: 制御パラメーターを返す
-        Serial.println(Ki_Red);
+        Serial.print(Target_Black);// Black: 目的温度を返す
+        Serial.print(",");
+        Serial.print(Kp_Black); // Black: 制御パラメーターを返す
+        Serial.print(",");
+        Serial.print(Ki_Black);
+        Serial.print(",");
+        Serial.print(Kd_Black);
+        Serial.print(",");
+        Serial.print(Target_Red);// Red: 目的温度を返す
+        Serial.print(",");
+        Serial.print(Kp_Red); // Red: 制御パラメーターを返す
+        Serial.print(",");
+        Serial.print(Ki_Red);
+        Serial.print(",");
         Serial.println(Kd_Red);
         Serial.flush();
         break;
@@ -186,6 +194,7 @@ void serialEvent(){
         Kp_Red = cmds[5].toInt(); // Red: 制御パラメーターを返す
         Ki_Red = cmds[6].toInt();
         Kd_Red = cmds[7].toInt();
+        Serial.println("P");
         Serial.flush();
         break;
       default:
