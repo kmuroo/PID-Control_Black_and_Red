@@ -99,6 +99,7 @@ void loop() {
     I_Red += P_Red * dt;
 
     D_Black = (P_Black - preP_Black) / dt;
+    D_Red = (P_Red - preP_Red) / dt; // この行がなかった（バグ）2025/7/23 修正 by Muroo
 
     preP_Black = P_Black; //過去Pの更新
     preP_Red = P_Red;
