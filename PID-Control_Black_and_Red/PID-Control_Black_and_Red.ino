@@ -7,7 +7,7 @@ const int Senser_Port_Red = 1;
 const int Output_Port_Black = 9; //PWM Port
 const int Output_Port_Red = 10;
 bool echo_on = false;
-float integration_dumping_factor = 0.999;
+float integration_dumping_factor = 0.99;
 //float integration_dumping_factor = 1.0;
 //PID制御パラメータ
 //----- 芦澤、西 における初期設定値 --------------------
@@ -108,8 +108,8 @@ void loop() {
     }
     pretime = micros();//過去時間の更新
     
-    I_Black += P_Black * dt;
-    I_Red += P_Red * dt;
+    I_Black += P_Black * dt; if(I_Black > 100.0)I_Black = 100.0; // I_Black, I_Red に上限設定 100.0
+    I_Red += P_Red * dt; if(I_Red > 100.0)I_Red = 100.0;
 
     D_Black = (P_Black - preP_Black) / dt;
     D_Red = (P_Red - preP_Red) / dt; // この行がなかった（バグ）2025/7/23 修正 by Muroo
@@ -129,8 +129,8 @@ void loop() {
     }
 
 /*---------- PID出力が飽和（255）している間はIをダンプさせる ----------------*/
-    if(duty_Black == 255)I_Black*integration_dumping_factor;
-    if(duty_Red == 255)I_Red*=integration_dumping_factor;
+    //if(duty_Black == 255)I_Black*integration_dumping_factor;
+    //if(duty_Red == 255)I_Red*=integration_dumping_factor;
 /*---------------------------------*/    
     
     if (duty_Black < 0.0 || temp_Black > 30.0) {
@@ -213,6 +213,7 @@ void serialEvent(){
         myString = Serial.readString();
         echo_on = true;
         Serial.flush();
+        //I_Black = I_Red = 0.0; // I をクリア
         break;
       case 's':
         myString = Serial.readString();
