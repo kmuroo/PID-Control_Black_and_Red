@@ -108,8 +108,8 @@ void loop() {
     }
     pretime = micros();//過去時間の更新
     
-    I_Black += P_Black * dt; if(I_Black > 100.0)I_Black = 100.0; // I_Black, I_Red に上限設定 100.0
-    I_Red += P_Red * dt; if(I_Red > 100.0)I_Red = 100.0;
+    I_Black += P_Black * dt; if(I_Black > 255.0/Ki_Black)I_Black = 255.0/Ki_Black; // I_Black, I_Red に上限設定 200.0 250805
+    I_Red += P_Red * dt; if(I_Red > 255.0/Ki_Red)I_Red = 255.0/Ki_Red;             // 上限値を変更 255.0/Ki_Black,Red 
 
     D_Black = (P_Black - preP_Black) / dt;
     D_Red = (P_Red - preP_Red) / dt; // この行がなかった（バグ）2025/7/23 修正 by Muroo
