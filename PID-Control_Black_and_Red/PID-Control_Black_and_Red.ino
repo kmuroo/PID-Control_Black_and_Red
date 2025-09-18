@@ -1,6 +1,5 @@
 //不明な点があったら芦澤まで
 
-
 float Target_Black = -18.0; //目標温度
 float Target_Red = -18.0; //目標温度
 const int Senser_Port_Black = 0;
@@ -8,7 +7,8 @@ const int Senser_Port_Red = 1;
 const int Output_Port_Black = 9; //PWM Port
 const int Output_Port_Red = 10;
 bool echo_on = false;
-
+float integration_dumping_factor = 0.99;
+//float integration_dumping_factor = 1.0;
 //PID制御パラメータ
 //----- 芦澤、西 における初期設定値 --------------------
 //float Kp_Black = 300.0; //比例ゲイン
@@ -18,7 +18,8 @@ bool echo_on = false;
 //----- ジーグラ・ニコルス限界感度法における初期設定値  2025/7/23 変更--------------------
 float Kp_Black = 57.0; //比例ゲイン
 float Ki_Black = 2.18; //積分ゲイン
-float Kd_Black = 0.544; //微分ゲイン
+//float Kd_Black = 0.544; //微分ゲイン
+float Kd_Black = 1.11; //微分ゲインの微調整 Redと同値へ 20250729
 //Black channel
 
 //-30℃で1200/50/0
@@ -45,9 +46,24 @@ float preP_Red = 0;
 
 float x_Black = 0.0;
 float x_Red = 0.0;
-long duty_Black, duty_Red;
+long  duty_Black, duty_Red;
 float dt;
 float pretime = 0;//過去の時間
+
+int count = 0;
+unsigned long curr;
+unsigned long prev;
+double tempsum_Black = 0;
+double tempsum_Red = 0;
+double number_Black;
+double temp_Black;
+double number_Red;
+double temp_Red;
+bool verbose = false;
+String params[8];
+int index;
+
+int i;
 
 void(*resetFunc)(void) = 0;
 
@@ -58,17 +74,14 @@ void setup() {
 }
 
 void loop() {
-  int count = 0;
-  unsigned long curr = millis();
-  unsigned long prev = millis();
-  double tempsum_Black = 0;
-  double tempsum_Red = 0;
-
+  curr = prev = millis();
+  tempsum_Black = 0;
+  tempsum_Red = 0;
+  
   while ((curr - prev) <= 1000) {
-
     //サーミスタの出力を測定
     x_Black = x_Red = 0;
-    for (int i = 0; i < 80; i++) {
+    for (i = 0; i < 80; i++) {
       x_Black += analogRead(Senser_Port_Black); //アナログピン0でサーミスタのV_outを読み取る
       x_Red += analogRead(Senser_Port_Red);
     }
@@ -76,10 +89,10 @@ void loop() {
     x_Black = x_Black * 5.0 / 80.0 / 1023.0;
     x_Red = x_Red * 5.0 / 80.0 / 1023.0;
     //温度に変換
-    double number_Black = x_Black / (5.0 - x_Black);
-    double temp_Black = 1.0 / (1.0 / 298.0 + (1 / 3250.0) * log(number_Black)) - 273.0;
-    double number_Red = x_Red / (5.0 - x_Red);
-    double temp_Red = 1.0 / (1.0 / 298.0 + (1 / 3250.0) * log(number_Red)) - 273.0;
+    number_Black = x_Black / (5.0 - x_Black);
+    temp_Black = 1.0 / (1.0 / 298.0 + (1 / 3250.0) * log(number_Black)) - 273.0;
+    number_Red = x_Red / (5.0 - x_Red);
+    temp_Red = 1.0 / (1.0 / 298.0 + (1 / 3250.0) * log(number_Red)) - 273.0;
 
     count++;
     tempsum_Black += temp_Black; //温度の合計
@@ -95,8 +108,8 @@ void loop() {
     }
     pretime = micros();//過去時間の更新
     
-    I_Black += P_Black * dt;
-    I_Red += P_Red * dt;
+    I_Black += P_Black * dt; if(I_Black > 255.0/Ki_Black)I_Black = 255.0/Ki_Black; // I_Black, I_Red に上限設定 200.0 250805
+    I_Red += P_Red * dt; if(I_Red > 255.0/Ki_Red)I_Red = 255.0/Ki_Red;             // 上限値を変更 255.0/Ki_Black,Red 
 
     D_Black = (P_Black - preP_Black) / dt;
     D_Red = (P_Red - preP_Red) / dt; // この行がなかった（バグ）2025/7/23 修正 by Muroo
@@ -114,7 +127,11 @@ void loop() {
     if (duty_Red > 255.0) {
       duty_Red = 255;
     }
-    
+
+/*---------- PID出力が飽和（255）している間はIをダンプさせる ----------------*/
+    //if(duty_Black == 255)I_Black*integration_dumping_factor;
+    //if(duty_Red == 255)I_Red*=integration_dumping_factor;
+/*---------------------------------*/    
     
     if (duty_Black < 0.0 || temp_Black > 30.0) {
       duty_Black = 0;
@@ -130,9 +147,37 @@ void loop() {
 
 //  Serial.println(tempsum / count);//温度を出力
   if(echo_on == true){
+    //Serial.print(count);
+    //Serial.print("\t");
     Serial.print(tempsum_Black / count);
     Serial.print("\t");
     Serial.println(tempsum_Red / count);
+    if(verbose == true)
+    {
+      Serial.print(Target_Black);
+      Serial.print("\t");
+      Serial.print(temp_Black);
+      Serial.print("\t");
+      Serial.print(P_Black);
+      Serial.print("\t");
+      Serial.print(I_Black);
+      Serial.print("\t");
+      Serial.print(D_Black);
+      Serial.print("\t");
+      Serial.println(duty_Black);
+
+      Serial.print(Target_Red);
+      Serial.print("\t");
+      Serial.print(temp_Red);
+      Serial.print("\t");
+      Serial.print(P_Red);
+      Serial.print("\t");
+      Serial.print(I_Red);
+      Serial.print("\t");
+      Serial.print(D_Red);
+      Serial.print("\t");
+      Serial.println(duty_Red);
+    }
   }
   count = 0;
 }
@@ -145,13 +190,17 @@ void serialEvent(){
     ch=Serial.read();
     switch(ch){
       case 'h':
-        //myString = Serial.readString();
+        myString = Serial.readString();
         Serial.println("c: Rreturn \"PID_Controller\"");
         Serial.println("e: Enable report");
         Serial.println("s: Stop report");
         Serial.println("r: Reset and return \"Reset\"");
         Serial.println("l: Show current PID parameters");
-        Serial.println("p: Put PID parameters; given by 7 numbers separated \",\" and return \"P\"");
+        Serial.println("p: Set PID parameters; given by 8 numbers separated by \",\", and return \"P\"");
+        Serial.println("v: Set verbose mode\",\" and return \"V\"");
+        Serial.println("t: Set terse mode\",\" and return \"T\"");
+        Serial.println("i: Force to clear integrals and return \"I\"");
+        Serial.println("d: Set dumping parameter; givin by a number, and return \"D\"");
         Serial.println("h: Show this message");
         Serial.flush();
         break;
@@ -164,6 +213,7 @@ void serialEvent(){
         myString = Serial.readString();
         echo_on = true;
         Serial.flush();
+        //I_Black = I_Red = 0.0; // I をクリア
         break;
       case 's':
         myString = Serial.readString();
@@ -177,6 +227,7 @@ void serialEvent(){
         resetFunc();
         break;
       case 'l':
+        myString = Serial.readString();
         echo_on = false;
         Serial.print(Target_Black);// Black: 目的温度を返す
         Serial.print(",");
@@ -197,38 +248,70 @@ void serialEvent(){
         break;
       case 'p':
         myString = Serial.readString();
-        //Serial.println(myString);
-        String cmds[8] = {"\0"}; // 分割された文字列を格納する配列 
-        int index = split(myString, ',', cmds);
-        Target_Black = cmds[0].toInt();// Black: 目的温度を返す
-        Kp_Black = cmds[1].toInt(); // Black: 制御パラメーターを返す
-        Ki_Black = cmds[2].toInt();
-        Kd_Black = cmds[3].toInt();
-        Target_Red = cmds[4].toInt();// Red: 目的温度を返す
-        Kp_Red = cmds[5].toInt(); // Red: 制御パラメーターを返す
-        Ki_Red = cmds[6].toInt();
-        Kd_Red = cmds[7].toInt();
+        index = split(myString, ',', params,8);
+        Target_Black = params[0].toFloat();params[0]="";// Black: 目的温度を返す
+        Kp_Black = params[1].toFloat();params[1]=""; // Black: 制御パラメーターを返す
+        Ki_Black = params[2].toFloat();params[2]="";
+        Kd_Black = params[3].toFloat();params[3]="";
+        Target_Red = params[4].toFloat();params[4]="";// Red: 目的温度を返す
+        Kp_Red = params[5].toFloat();params[5]=""; // Red: 制御パラメーターを返す
+        Ki_Red = params[6].toFloat();params[6]="";
+        Kd_Red = params[7].toFloat();params[7]="";
         Serial.println("P");
         Serial.flush();
+        myString = Serial.readString();
+        break;
+      case 'v': // Set verbose mode
+        myString = Serial.readString();
+        verbose = true;
+        Serial.println("V");
+        Serial.flush();
+        break;
+      case 't': //Set terse mode
+        myString = Serial.readString();
+        verbose = false;
+        Serial.println("T");
+        Serial.flush();
+        break; 
+      case 'i': //Reset integlals
+        myString = Serial.readString();
+        I_Black = I_Red = 0.0;
+        Serial.println("I");
+        Serial.flush();
+        break;
+      case 'd':
+        myString = Serial.readString();
+        integration_dumping_factor = myString.toFloat();
+        Serial.println("D");
+        Serial.println(integration_dumping_factor,7);
+        Serial.flush();
+        myString = Serial.readString();
         break;
       default:
         myString = Serial.readString();
-        //Serial.println("Interapted!");
+        Serial.println("Invalid order");
     }
   }
 }
 
-int split(String data, char delimiter, String *dst){ // 文字列を区切り文字で分割
-    int index = 0; 
+int split(String data, char delimiter, String *dst, int number_of_params){ // 文字列を区切り文字で分割
+    index = 0;
     int datalength = data.length();
-    
     for (int i = 0; i < datalength; i++) {
         char tmp = data.charAt(i);
-        if ( tmp == delimiter ) {
+        if ( tmp == delimiter )
+        {
             index++;
+            if(index > number_of_params-1)
+            {
+              Serial.println("Too many parameters");
+              return(index);
+            }
         }
-        else dst[index] += tmp;
+        else
+        {
+          dst[index] += tmp;
+        }   
     }
-    
     return (index + 1);
 }
