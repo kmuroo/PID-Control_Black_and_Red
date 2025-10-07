@@ -1,3 +1,4 @@
+// Ver. 2.3
 //不明な点があったら芦澤まで
 
 float Target_Black = -18.0; //目標温度
@@ -7,8 +8,7 @@ const int Senser_Port_Red = 1;
 const int Output_Port_Black = 9; //PWM Port
 const int Output_Port_Red = 10;
 bool echo_on = false;
-float integration_dumping_factor = 0.99;
-//float integration_dumping_factor = 1.0;
+
 //PID制御パラメータ
 //----- 芦澤、西 における初期設定値 --------------------
 //float Kp_Black = 300.0; //比例ゲイン
@@ -127,11 +127,6 @@ void loop() {
     if (duty_Red > 255.0) {
       duty_Red = 255;
     }
-
-/*---------- PID出力が飽和（255）している間はIをダンプさせる ----------------*/
-    //if(duty_Black == 255)I_Black*integration_dumping_factor;
-    //if(duty_Red == 255)I_Red*=integration_dumping_factor;
-/*---------------------------------*/    
     
     if (duty_Black < 0.0 || temp_Black > 30.0) {
       duty_Black = 0;
@@ -200,7 +195,6 @@ void serialEvent(){
         Serial.println("v: Set verbose mode\",\" and return \"V\"");
         Serial.println("t: Set terse mode\",\" and return \"T\"");
         Serial.println("i: Force to clear integrals and return \"I\"");
-        Serial.println("d: Set dumping parameter; givin by a number, and return \"D\"");
         Serial.println("h: Show this message");
         Serial.flush();
         break;
@@ -222,7 +216,7 @@ void serialEvent(){
         break;
       case 'r':
         myString = Serial.readString();
-        Serial.println("Reset"); // Arduinoリセット "Reset"を返す
+        Serial.println("Reset"); // Arduinoリセット, "Reset"を返す
         Serial.flush();
         resetFunc();
         break;
@@ -278,14 +272,6 @@ void serialEvent(){
         I_Black = I_Red = 0.0;
         Serial.println("I");
         Serial.flush();
-        break;
-      case 'd':
-        myString = Serial.readString();
-        integration_dumping_factor = myString.toFloat();
-        Serial.println("D");
-        Serial.println(integration_dumping_factor,7);
-        Serial.flush();
-        myString = Serial.readString();
         break;
       default:
         myString = Serial.readString();
