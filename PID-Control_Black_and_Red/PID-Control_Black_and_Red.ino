@@ -44,7 +44,7 @@ float Ti_Red = 0.50*Pu_Red;     //0.555
 float Td_Red = 0.125*Pu_Red;    //0.139
 float Ki_Red = Kp_Red/Ti_Red; //積分ゲイン 129.7 
 //float Kd_Red = Kp_Red*Td_Red; //微分ゲイン 48.0 // 高畠・長倉実験結果を基に推奨値から微調整 Kd = Kp*Td = 75.7 → 65.5 2025/10/31
-float Kd_Red = 65.5
+float Kd_Red = 65.5;
 //Red channel
 
 float P_Black = 0;
